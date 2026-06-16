@@ -24,9 +24,19 @@
           <p class="secret-text">"{{ secret.content }}"</p>
           <div class="secret-footer">
             <span class="status-badge">{{ secret.status }}</span>
-            <button class="btn btn-secondary refresh-btn" @click="fetchRandomSecret">
-              🔄 换一个
-            </button>
+            <div class="secret-actions">
+              <button
+                class="btn-fav"
+                :class="{ active: favorited }"
+                @click="handleToggleFavorite"
+                :title="favorited ? '取消收藏' : '收藏这个秘密'"
+              >
+                {{ favorited ? '❤️' : '🤍' }}
+              </button>
+              <button class="btn btn-secondary refresh-btn" @click="fetchRandomSecret">
+                🔄 换一个
+              </button>
+            </div>
           </div>
         </div>
       </transition>
@@ -41,14 +51,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useFavorites } from '../composables/useFavorites'
 
 const router = useRouter()
+const { version, isFavorited, toggleFavorite } = useFavorites()
 const loading = ref(true)
 const hasSecret = ref(false)
 const secret = ref(null)
 const message = ref('')
+
+const favorited = computed(() => {
+  void version.value
+  return secret.value ? isFavorited(secret.value.id) : false
+})
+
+function handleToggleFavorite() {
+  if (secret.value) {
+    toggleFavorite(secret.value)
+  }
+}
 
 async function fetchRandomSecret() {
   loading.value = true
@@ -173,6 +196,44 @@ onMounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 15px;
+}
+
+.secret-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-fav {
+  width: 42px;
+  height: 42px;
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.btn-fav:hover {
+  border-color: #f87171;
+  transform: scale(1.1);
+}
+
+.btn-fav.active {
+  border-color: #ef4444;
+  background: #fef2f2;
+  animation: heartPop 0.3s ease;
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 
 .status-badge {
