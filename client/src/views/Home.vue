@@ -1,5 +1,13 @@
 <template>
   <div class="home-container">
+    <transition name="fade">
+      <div v-if="toastMessage" class="toast-container">
+        <div class="toast" :class="toastType">
+          {{ toastMessage }}
+        </div>
+      </div>
+    </transition>
+
     <div class="card secret-card">
       <div class="card-header">
         <span class="icon">💫</span>
@@ -51,16 +59,29 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFavorites } from '../composables/useFavorites'
 
 const router = useRouter()
-const { version, isFavorited, toggleFavorite } = useFavorites()
+const { version, isFavorited, toggleFavorite, onError } = useFavorites()
 const loading = ref(true)
 const hasSecret = ref(false)
 const secret = ref(null)
 const message = ref('')
+const toastMessage = ref('')
+const toastType = ref('success')
+let toastTimer = null
+let unsubscribeError = null
+
+function showToast(msg, type = 'success') {
+  if (toastTimer) clearTimeout(toastTimer)
+  toastMessage.value = msg
+  toastType.value = type
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 3000)
+}
 
 const favorited = computed(() => {
   void version.value
@@ -68,8 +89,10 @@ const favorited = computed(() => {
 })
 
 function handleToggleFavorite() {
-  if (secret.value) {
-    toggleFavorite(secret.value)
+  if (!secret.value) return
+  const result = toggleFavorite(secret.value)
+  if (result.success) {
+    showToast(result.action + '成功', 'success')
   }
 }
 
@@ -96,6 +119,14 @@ function goToConfess() {
 
 onMounted(() => {
   fetchRandomSecret()
+  unsubscribeError = onError((msg) => {
+    showToast(msg, 'error')
+  })
+})
+
+onUnmounted(() => {
+  if (toastTimer) clearTimeout(toastTimer)
+  if (unsubscribeError) unsubscribeError()
 })
 </script>
 

@@ -1,5 +1,13 @@
 <template>
   <div class="favorites-container">
+    <transition name="fade">
+      <div v-if="toastMessage" class="toast-container">
+        <div class="toast" :class="toastType">
+          {{ toastMessage }}
+        </div>
+      </div>
+    </transition>
+
     <div class="card favorites-card">
       <div class="card-header">
         <span class="icon">❤️</span>
@@ -39,12 +47,25 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFavorites } from '../composables/useFavorites'
 
 const router = useRouter()
-const { version, getFavorites, removeFavorite } = useFavorites()
+const { version, getFavorites, removeFavorite, onError } = useFavorites()
+const toastMessage = ref('')
+const toastType = ref('success')
+let toastTimer = null
+let unsubscribeError = null
+
+function showToast(msg, type = 'success') {
+  if (toastTimer) clearTimeout(toastTimer)
+  toastMessage.value = msg
+  toastType.value = type
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 3000)
+}
 
 const favorites = computed(() => {
   void version.value
@@ -52,7 +73,10 @@ const favorites = computed(() => {
 })
 
 function handleRemove(id) {
-  removeFavorite(id)
+  const result = removeFavorite(id)
+  if (result.success) {
+    showToast('已取消收藏', 'success')
+  }
 }
 
 function formatTime(isoStr) {
@@ -68,6 +92,17 @@ function formatTime(isoStr) {
 function goHome() {
   router.push('/')
 }
+
+onMounted(() => {
+  unsubscribeError = onError((msg) => {
+    showToast(msg, 'error')
+  })
+})
+
+onUnmounted(() => {
+  if (toastTimer) clearTimeout(toastTimer)
+  if (unsubscribeError) unsubscribeError()
+})
 </script>
 
 <style scoped>
